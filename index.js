@@ -1,87 +1,87 @@
-'use strict';
-
-const qs = require('querystring');
-const got = require('got');
-
-class Client {
-	constructor(id, apiKey) {
-		if (!id) {
-			throw new TypeError('Expected a Custom Search Engine ID');
+xport default class GoogleImageSearch {
+	
+		/**
+		 * Function for image search
+		 *
+		 * @param  {string} query   Image search filed query
+		 * @return {Promise}        Returns a promise, with an array of found image URL's
+		 */
+		static searchImage(query) {
+			query = encodeURIComponent(query)
+	
+			return new Promise( (resolve, reject) => {
+	
+				// Fetches Items from Google Image Search URL
+				fetch("https://cors-anywhere.herokuapp.com/https://www.google.com.ua/search?source=lnms&sa=X&gbv=1&tbm=isch&q="+query)
+				.then( res => res.text() )
+				.then( res => {
+	
+					// Transforms HTML string into DOM object
+					let parser = new DOMParser()
+					parser = parser.parseFromString(res, "text/html")
+	
+					// Gets DOM element with image results
+					let images = parser.getElementById("ires").childNodes[0]
+	
+					if (images.nodeName === "DIV") {
+	
+						resolve(this.googleGetMobile(images))
+					} else if (images.nodeName === "TABLE") {
+	
+						resolve(this.googleGetDesktop(images))
+					} else {
+	
+						reject("Unknown System")
+					}
+	
+				})
+				.catch( err => reject(err) )
+			})
 		}
-
-		if (!apiKey) {
-			throw new TypeError('Expected an API key');
+	
+		/**
+		 * Traverses DOM tree in mobile layout
+		 *
+		 * @param  {NodeList} images    Children of "ires" container
+		 * @return {Array}              Array of found images URL's
+		 */
+		static googleGetMobile(images) {
+	
+			// Transforms DOM NodeList of images into Array.
+			// Needed to use .map method
+			images = Array.from(images.childNodes)
+	
+			// Maps Image Sources
+			return images.map( (imgDiv) => {
+				console.log(imgDiv.getAttribute("href"));
+				return imgDiv.childNodes[0].src
+			} )
 		}
-
-		this.endpoint = 'https://www.googleapis.com';
-		this.apiKey = apiKey;
-		this.id = id;
+	
+		/**
+		 * Traverses DOM tree in desktop layout
+		 *
+		 * @param  {NodeList} images    Children of "ires" container
+		 * @return {Array}              Array of found images URLs
+		 */
+		static googleGetDesktop(images) {
+	
+			// NodeList of table rows
+			images = images.childNodes[0].childNodes
+	
+			// Empty List of image URLs
+			let imgSrc = []
+	
+			// Traverses table node for images
+			images.forEach( (tRow) => {
+				tRow = tRow.childNodes
+				tRow.forEach( (tCol) => {
+					let aLink = tCol.childNodes[0].childNodes[0]
+					imgSrc.push(aLink.src)
+				})
+			} )
+	
+			return imgSrc
+		}
+	
 	}
-
-	search(query, options) {
-		if (!query) {
-			throw new TypeError('Expected a query');
-		}
-
-		const url = `${this.endpoint}/customsearch/v1?${this.buildQuery(query, options)}`;
-
-		return got(url, {json: true}).then(res => {
-			const items = res.body.items || [];
-
-			return items.map(item => ({
-				type: item.mime,
-				width: item.image.width,
-				height: item.image.height,
-				size: item.image.byteSize,
-				url: item.link,
-				thumbnail: {
-					url: item.image.thumbnailLink,
-					width: item.image.thumbnailWidth,
-					height: item.image.thumbnailHeight
-				},
-				description: item.snippet,
-				parentPage: item.image.contextLink
-			}));
-		});
-	}
-
-	buildQuery(query, options) {
-		options = options || {};
-
-		const result = {
-			q: query.replace(/\s/g, '+'),
-			searchType: 'image',
-			cx: this.id,
-			key: this.apiKey
-		};
-
-		if (options.page) {
-			result.start = options.page;
-		}
-
-		if (options.size) {
-			result.imgSize = options.size;
-		}
-
-		if (options.type) {
-			result.imgType = options.type;
-		}
-
-		if (options.dominantColor) {
-			result.imgDominantColor = options.dominantColor;
-		}
-
-		if (options.colorType) {
-			result.imgColorType = options.colorType;
-		}
-
-		if (options.safe) {
-			result.safe = options.safe;
-		}
-
-		return qs.stringify(result);
-	}
-}
-
-module.exports = Client;
-,...llll'//''-[][;;b88kjmjuj]
